@@ -1,0 +1,19 @@
+import customtkinter as ctk
+
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+app = ctk.CTk()
+
+app.geometry("1000x700")
+app.title("CyberScope")
+
+label = ctk.CTkLabel(
+    app,
+    text="CyberScope",
+    font=("JetBrains Mono", 30)
+)
+
+label.pack(pady=30)
+
+app.mainloop()
