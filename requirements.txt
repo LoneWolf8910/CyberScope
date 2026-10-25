@@ -16,3 +16,4 @@ scapy==2.7.0
 six==1.17.0
 pynput
 requests
+pytest
