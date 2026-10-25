@@ -7,8 +7,11 @@ from core.packet_sniffer import PacketSniffer
 
 class PacketPage(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, stats_callback=None, capture_state_callback=None):
         super().__init__(master)
+
+        self.stats_callback = stats_callback
+        self.capture_state_callback = capture_state_callback
 
         # ==========================================
         # PACKET QUEUE + SNIFFER
@@ -251,6 +254,10 @@ class PacketPage(ctk.CTkFrame):
 
                 self.table.add_packet(packet)
 
+                # Update shared stats (runs on main thread via after())
+                if self.stats_callback:
+                    self.stats_callback(packet)
+
         except queue.Empty:
 
             pass
@@ -271,6 +278,10 @@ class PacketPage(ctk.CTkFrame):
 
         self.sniffer.start(interface)
 
+        # Report capture state to dashboard
+        if self.capture_state_callback:
+            self.capture_state_callback(interface, True)
+
         self.status_label.configure(
             text=f"● Capturing on {interface}"
         )
@@ -289,7 +300,13 @@ class PacketPage(ctk.CTkFrame):
 
     def stop_capture(self):
 
+        interface = self.interface.get()
+
         self.sniffer.stop()
+
+        # Report capture state to dashboard
+        if self.capture_state_callback:
+            self.capture_state_callback(interface, False)
 
         self.status_label.configure(
             text="● Capture stopped"

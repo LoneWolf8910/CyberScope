@@ -5,9 +5,12 @@ from ui.stats_cards import StatsCards
 
 class Dashboard(ctk.CTkFrame):
 
-    def __init__(self, master):
+    def __init__(self, master, stats_callback=None, get_capture_state=None):
 
         super().__init__(master)
+
+        self.stats_callback = stats_callback
+        self.get_capture_state = get_capture_state
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
@@ -64,39 +67,94 @@ class Dashboard(ctk.CTkFrame):
         ).pack(
             anchor="w",
             padx=20,
-            pady=(20,10)
+            pady=(20, 10)
         )
 
-        # self.status_label = ctk.CTkLabel(
-        #     status,
-        #     text="🟢 Waiting for packet capture...",
-        #     font=("JetBrains Mono",16)
-        # )
+        self.status_label = ctk.CTkLabel(
+            status,
+            text="🟢 Waiting for packet capture...",
+            font=("JetBrains Mono", 16)
+        )
 
-        # self.status_label.pack(
-        #     anchor="w",
-        #     padx=20
-        # )
+        self.status_label.pack(
+            anchor="w",
+            padx=20
+        )
 
-        # self.bandwidth = ctk.CTkLabel(
-        #     status,
-        #     text="Bandwidth : 0 KB/s",
-        #     font=("JetBrains Mono",15)
-        # )
+        self.bandwidth = ctk.CTkLabel(
+            status,
+            text="Bandwidth : 0 B/s",
+            font=("JetBrains Mono", 15)
+        )
 
-        # self.bandwidth.pack(
-        #     anchor="w",
-        #     padx=20,
-        #     pady=8
-        # )
+        self.bandwidth.pack(
+            anchor="w",
+            padx=20,
+            pady=8
+        )
 
         self.interface = ctk.CTkLabel(
             status,
             text="Interface : Not Selected",
-            font=("JetBrains Mono",15)
+            font=("JetBrains Mono", 15)
         )
 
         self.interface.pack(
             anchor="w",
             padx=20
         )
+
+        # -----------------------------
+        # Start live refresh
+        # -----------------------------
+
+        self.after(1000, self.refresh)
+
+    # ---------------------------------
+    # Refresh dashboard stats + status
+    # ---------------------------------
+
+    def refresh(self):
+
+        # Update stats cards
+        if self.stats_callback:
+            stats = self.stats_callback()
+            self.stats.update_stats(stats)
+
+            # Bandwidth = bytes since last refresh
+            current_bytes = stats.get("Bytes", 0)
+            if not hasattr(self, "_last_bytes"):
+                self._last_bytes = 0
+            delta = current_bytes - self._last_bytes
+            self._last_bytes = current_bytes
+
+            if delta < 1024:
+                bw_text = f"{delta} B/s"
+            elif delta < 1024 * 1024:
+                bw_text = f"{delta / 1024:.1f} KB/s"
+            else:
+                bw_text = f"{delta / (1024 * 1024):.2f} MB/s"
+
+            self.bandwidth.configure(text=f"Bandwidth : {bw_text}")
+
+        # Update capture status + interface
+        if self.get_capture_state:
+            interface, running = self.get_capture_state()
+
+            if running:
+                self.status_label.configure(
+                    text=f"🟡 Capturing on {interface or 'unknown'}..."
+                )
+                self.interface.configure(
+                    text=f"Interface : {interface or 'Not Selected'}"
+                )
+            else:
+                self.status_label.configure(
+                    text="🟢 Waiting for packet capture..."
+                )
+                self.interface.configure(
+                    text=f"Interface : {interface or 'Not Selected'}"
+                )
+
+        # Schedule next refresh
+        self.after(1000, self.refresh)

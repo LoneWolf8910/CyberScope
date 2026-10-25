@@ -25,10 +25,57 @@ app.grid_columnconfigure(1, weight=1)
 app.grid_rowconfigure(0, weight=1)
 
 # -------------------------
+# Shared stats + capture state
+# -------------------------
+
+app.stats = {
+    "Packets": 0,
+    "TCP": 0,
+    "UDP": 0,
+    "DNS": 0,
+    "ICMP": 0,
+    "Bytes": 0,
+}
+
+app.capture_interface = None
+app.capture_running = False
+
+
+def update_stats(data):
+    """Called from the main thread whenever a packet is processed."""
+    app.stats["Packets"] += 1
+    app.stats["Bytes"] += data.get("length", 0)
+
+    proto = data.get("protocol", "OTHER")
+    sport = data.get("sport", "-")
+    dport = data.get("dport", "-")
+
+    if proto == "TCP":
+        app.stats["TCP"] += 1
+    elif proto == "UDP":
+        app.stats["UDP"] += 1
+    elif proto == "ICMP":
+        app.stats["ICMP"] += 1
+
+    # DNS detection (port 53)
+    if sport == 53 or dport == 53:
+        app.stats["DNS"] += 1
+
+
+def set_capture_state(interface, running):
+    app.capture_interface = interface
+    app.capture_running = running
+
+
+# -------------------------
 # Create Pages
 # -------------------------
 
-dashboard = Dashboard(app)
+dashboard = Dashboard(
+    app,
+    stats_callback=lambda: dict(app.stats),
+    get_capture_state=lambda: (app.capture_interface, app.capture_running),
+)
 
 dashboard.grid(
     row=0,
@@ -38,7 +85,11 @@ dashboard.grid(
     pady=20
 )
 
-packet_page = PacketPage(app)
+packet_page = PacketPage(
+    app,
+    stats_callback=update_stats,
+    capture_state_callback=set_capture_state,
+)
 
 packet_page.grid(
     row=0,
